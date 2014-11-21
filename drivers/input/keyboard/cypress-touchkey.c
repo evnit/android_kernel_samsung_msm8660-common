@@ -1498,16 +1498,15 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 #ifdef CONFIG_ENHANCED_BLN
 	sscanf(buf, "%u", &req_state);
 #endif
-	mutex_lock(&touchkey_driver->mutex);
 
 #if defined(CONFIG_KOR_MODEL_SHV_E160L)
 	if(touchkey_connected==0){
 		printk(KERN_ERR "[TKEY] led_control return connect_error\n");
-		goto unlock;
+		return size;
 		}
 	if( touchkey_downloading_status ){
 		printk(KERN_ERR "[TKEY] led_control return update_status_error or downloading now! \n");
-		goto unlock;
+		return size;
 	}
 #endif
 	if(buf != NULL){
@@ -1557,10 +1556,6 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 	} else
 		printk("touch_led_control Error\n");
 
-#if defined(CONFIG_KOR_MODEL_SHV_E160L)
-unlock:
-#endif
-	mutex_unlock(&touchkey_driver->mutex);
 	return size;
 }
 
