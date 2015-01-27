@@ -204,6 +204,7 @@ struct i2c_touchkey_driver {
 	struct early_suspend early_suspend;
         atomic_t keypad_enable;
 	struct mutex mutex;
+	bool is_bln_active;
 };
 struct i2c_touchkey_driver *touchkey_driver = NULL;
 struct work_struct touchkey_work;
@@ -301,7 +302,11 @@ static int i2c_touchkey_write(u8 * val, unsigned int len)
 	struct i2c_msg msg[1];
 	int retry = 2;
 
-	if ((touchkey_driver == NULL || touchkey_enable != 1)) {
+	if ((touchkey_driver == NULL || touchkey_enable != 1)
+#if defined(CONFIG_ENHANCED_BLN)
+		&& (!touchkey_driver->is_bln_active)
+#endif
+	) {
 		printk(KERN_DEBUG "[TKEY] touchkey is not enabled.W\n");
 		return -ENODEV;
 	}
@@ -1053,6 +1058,7 @@ static void cypress_touchkey_enable_led_vdd(void)
 	tkey_vdd_enable(1);
 	msleep(50);
 	tkey_led_vdd_enable(1);
+	touchkey_driver->is_bln_active = true;
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1061,6 +1067,7 @@ static void cypress_touchkey_disable_led_vdd(void)
 	mutex_lock(&touchkey_driver->mutex);
 	tkey_vdd_enable(0);
 	tkey_led_vdd_enable(0);
+	touchkey_driver->is_bln_active = false;
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
