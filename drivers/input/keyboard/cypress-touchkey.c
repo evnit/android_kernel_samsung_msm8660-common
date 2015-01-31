@@ -296,22 +296,20 @@ static int i2c_touchkey_read(u8 reg, u8 * val, unsigned int len)
 	return err;
 }
 
-static int i2c_touchkey_write(u8 * val, unsigned int len, int from_bln)
+static int i2c_touchkey_write(u8 * val, unsigned int len)
 {
 	int err = 0;
 	struct i2c_msg msg[1];
 	int retry = 2;
 
-	if (touchkey_driver == NULL || touchkey_enable != 1) {
+	if ((touchkey_driver == NULL || touchkey_enable != 1)
+#if defined(CONFIG_ENHANCED_BLN)
+		&& (!touchkey_driver->is_bln_active)
+#endif
+	) {
 		printk(KERN_DEBUG "[TKEY] touchkey is not enabled.W\n");
 		return -ENODEV;
 	}
-
-#ifdef CONFIG_ENHANCED_BLN
-	/* give BLN absolute control of LEDs while active */
-	if (touchkey_driver->is_bln_active && !from_bln)
-		return -EBUSY;
-#endif
 
 	while (retry--) {
 		msg->addr = touchkey_driver->client->addr;
@@ -671,7 +669,7 @@ static int touchkey_auto_calibration(int autocal_on_off)
 		data[0] = 0x50;
 		data[3] = 0x01;
 
-		count = i2c_touchkey_write(data, 4, 0);
+		count = i2c_touchkey_write(data, 4);
 
 		msleep(100);
 
@@ -705,9 +703,9 @@ static void touchkey_auto_calibration(int autocal_on_off)
 	printk("[TKEY] enter touchkey_auto_calibration\n");
 
 	if (autocal_on_off == 1)
-		i2c_touchkey_write(int_data, 4, 0);
+		i2c_touchkey_write(int_data, 4);
 	else
-		i2c_touchkey_write(int_data1, 4, 0);
+		i2c_touchkey_write(int_data1, 4);
 
     msleep(10);
     // i2c_touchkey_read	(0x05, data, 1);
@@ -943,7 +941,7 @@ if(touchled_cmd_reversed) {
 	//		msleep(300);
 			if(!touchkey_enable )
 				touchkey_enable = 1;
-			i2c_touchkey_write((u8*)&touchkey_led_status, 1, 0);
+			i2c_touchkey_write((u8*)&touchkey_led_status, 1);
 			printk("[TKEY] LED RESERVED !! LED returned on touchkey_led_status = %d\n", touchkey_led_status);
 	}
 #if defined (CONFIG_USA_MODEL_SGH_I717)
@@ -960,7 +958,7 @@ if(touchled_cmd_reversed) {
 		msleep(100);
 		if(!touchkey_enable )
 			touchkey_enable = 1;
-		i2c_touchkey_write((u8*)&touchkey_led_status, 1, 0);
+		i2c_touchkey_write((u8*)&touchkey_led_status, 1);
 		printk("[TKEY] NOT RESERVED!! LED returned on touchkey_led_status = %d\n", touchkey_led_status);
 	}
 #endif
@@ -1032,7 +1030,7 @@ static void cypress_touchkey_enable_backlight(void)
 	signed char int_data[] ={0x10};
 
 	mutex_lock(&touchkey_driver->mutex);
-	i2c_touchkey_write(int_data, 1, 1);
+	i2c_touchkey_write(int_data, 1);
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1042,22 +1040,17 @@ static void cypress_touchkey_disable_backlight(int bln_state)
 
 	/* don't turn off leds if userspace wants them on */
 	if ((bln_state == BLN_OFF) && req_state == 1) {
-		touchkey_driver->is_bln_active = false;
 		cypress_touchkey_enable_backlight();
 		return;
 	}
 
 	mutex_lock(&touchkey_driver->mutex);
-	i2c_touchkey_write(int_data, 1, 1);
-	if (bln_state == BLN_OFF)
-		touchkey_driver->is_bln_active = false;
+	i2c_touchkey_write(int_data, 1);
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
 static void cypress_touchkey_enable_led_vdd(void)
 {
-	touchkey_driver->is_bln_active = true;
-
 	if (touchkey_enable)
 		return;
 
@@ -1065,6 +1058,7 @@ static void cypress_touchkey_enable_led_vdd(void)
 	tkey_vdd_enable(1);
 	msleep(50);
 	tkey_led_vdd_enable(1);
+	touchkey_driver->is_bln_active = true;
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1073,6 +1067,7 @@ static void cypress_touchkey_disable_led_vdd(void)
 	mutex_lock(&touchkey_driver->mutex);
 	tkey_vdd_enable(0);
 	tkey_led_vdd_enable(0);
+	touchkey_driver->is_bln_active = false;
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1529,7 +1524,7 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 				printk(KERN_DEBUG "touch_led_control int_data: %d  \n", int_data);
 		#endif
 
-		errnum = i2c_touchkey_write((u8*)&int_data, 1, 0);
+		errnum = i2c_touchkey_write((u8*)&int_data, 1);
 		if(errnum==-ENODEV) {
 			touchled_cmd_reversed = 1;
 		}
@@ -1823,7 +1818,7 @@ static ssize_t touch_sensitivity_control(struct device *dev, struct device_attri
 */
 #endif
 	printk("[TKEY] called %s \n",__func__);
-	i2c_touchkey_write(&data, 1, 0);
+	i2c_touchkey_write(&data, 1);
 	mutex_unlock(&touchkey_driver->mutex);
 	return size;
 }
