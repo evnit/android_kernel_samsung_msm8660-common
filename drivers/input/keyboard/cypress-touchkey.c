@@ -204,7 +204,6 @@ struct i2c_touchkey_driver {
 	struct early_suspend early_suspend;
         atomic_t keypad_enable;
 	struct mutex mutex;
-	bool is_bln_active;
 };
 struct i2c_touchkey_driver *touchkey_driver = NULL;
 struct work_struct touchkey_work;
@@ -296,7 +295,7 @@ static int i2c_touchkey_read(u8 reg, u8 * val, unsigned int len)
 	return err;
 }
 
-static int i2c_touchkey_write(u8 * val, unsigned int len)
+static int i2c_touchkey_write(u8 * val, unsigned int len, int from_bln)
 {
 	int err = 0;
 	struct i2c_msg msg[1];
@@ -307,11 +306,7 @@ static int i2c_touchkey_write(u8 * val, unsigned int len)
 		return -ENODEV;
 	}
 
-	if ((touchkey_enable != 1)
-#if defined(CONFIG_ENHANCED_BLN)
-		&& (!touchkey_driver->is_bln_active)
-#endif
-	) {
+	if ((touchkey_enable != 1) && !from_bln) {
 		printk(KERN_DEBUG "[TKEY] touchkey is not enabled.W\n");
 		return -ENODEV;
 	}
@@ -674,7 +669,7 @@ static int touchkey_auto_calibration(int autocal_on_off)
 		data[0] = 0x50;
 		data[3] = 0x01;
 
-		count = i2c_touchkey_write(data, 4);
+		count = i2c_touchkey_write(data, 4, 0);
 
 		msleep(100);
 
@@ -708,9 +703,9 @@ static void touchkey_auto_calibration(int autocal_on_off)
 	printk("[TKEY] enter touchkey_auto_calibration\n");
 
 	if (autocal_on_off == 1)
-		i2c_touchkey_write(int_data, 4);
+		i2c_touchkey_write(int_data, 4, 0);
 	else
-		i2c_touchkey_write(int_data1, 4);
+		i2c_touchkey_write(int_data1, 4, 0);
 
     msleep(10);
     // i2c_touchkey_read	(0x05, data, 1);
@@ -946,7 +941,7 @@ if(touchled_cmd_reversed) {
 	//		msleep(300);
 			if(!touchkey_enable )
 				touchkey_enable = 1;
-			i2c_touchkey_write((u8*)&touchkey_led_status, 1);
+			i2c_touchkey_write((u8*)&touchkey_led_status, 1, 0);
 			printk("[TKEY] LED RESERVED !! LED returned on touchkey_led_status = %d\n", touchkey_led_status);
 	}
 #if defined (CONFIG_USA_MODEL_SGH_I717)
@@ -963,7 +958,7 @@ if(touchled_cmd_reversed) {
 		msleep(100);
 		if(!touchkey_enable )
 			touchkey_enable = 1;
-		i2c_touchkey_write((u8*)&touchkey_led_status, 1);
+		i2c_touchkey_write((u8*)&touchkey_led_status, 1, 0);
 		printk("[TKEY] NOT RESERVED!! LED returned on touchkey_led_status = %d\n", touchkey_led_status);
 	}
 #endif
@@ -1035,7 +1030,7 @@ static void cypress_touchkey_enable_backlight(void)
 	signed char int_data[] ={0x10};
 
 	mutex_lock(&touchkey_driver->mutex);
-	i2c_touchkey_write(int_data, 1);
+	i2c_touchkey_write(int_data, 1, 1);
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1050,7 +1045,7 @@ static void cypress_touchkey_disable_backlight(int bln_state)
 	}
 
 	mutex_lock(&touchkey_driver->mutex);
-	i2c_touchkey_write(int_data, 1);
+	i2c_touchkey_write(int_data, 1, 1);
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1063,7 +1058,6 @@ static void cypress_touchkey_enable_led_vdd(void)
 	tkey_vdd_enable(1);
 	msleep(50);
 	tkey_led_vdd_enable(1);
-	touchkey_driver->is_bln_active = true;
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1072,7 +1066,6 @@ static void cypress_touchkey_disable_led_vdd(void)
 	mutex_lock(&touchkey_driver->mutex);
 	tkey_vdd_enable(0);
 	tkey_led_vdd_enable(0);
-	touchkey_driver->is_bln_active = false;
 	mutex_unlock(&touchkey_driver->mutex);
 }
 
@@ -1529,7 +1522,7 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 				printk(KERN_DEBUG "touch_led_control int_data: %d  \n", int_data);
 		#endif
 
-		errnum = i2c_touchkey_write((u8*)&int_data, 1);
+		errnum = i2c_touchkey_write((u8*)&int_data, 1, 0);
 		if(errnum==-ENODEV) {
 			touchled_cmd_reversed = 1;
 		}
@@ -1823,7 +1816,7 @@ static ssize_t touch_sensitivity_control(struct device *dev, struct device_attri
 */
 #endif
 	printk("[TKEY] called %s \n",__func__);
-	i2c_touchkey_write(&data, 1);
+	i2c_touchkey_write(&data, 1, 0);
 	mutex_unlock(&touchkey_driver->mutex);
 	return size;
 }
@@ -1948,7 +1941,7 @@ static ssize_t set_touchkey_update_show(struct device *dev, struct device_attrib
 	init_hw();	/* after update, re initalize. */
 
 #ifdef TEST_JIG_MODE
-	i2c_touchkey_write(&get_touch, 1);
+	i2c_touchkey_write(&get_touch, 1, 0);
 #endif
 
 	return count;
