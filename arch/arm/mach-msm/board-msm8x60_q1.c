@@ -3587,6 +3587,9 @@ static struct platform_device msm_gemini_device = {
 #endif
 
 #ifdef CONFIG_I2C_QUP
+static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
+{
+}
 #if defined(CONFIG_JPN_MODEL_SC_05D)
 /*	QC patch for case 00580204 , I2C QTR failure
 * GSBI7 GPIO configuration for recovery of QTR I2C lines
@@ -3617,9 +3620,6 @@ static void gsbi7_qup_i2c_gpio_config(int adap_id, int config_type)
 	}
 }
 #endif
-static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
-{
-}
 
 #if defined (CONFIG_TARGET_LOCALE_USA)
 static struct msm_i2c_platform_data msm_gsbi1_qup_i2c_pdata = {
@@ -16525,7 +16525,6 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #else
 	.mem_hid = MEMTYPE_EBI1,
 #endif
-	.mdp_iommu_split_domain = 0,
 };
 
 static void __init reserve_mdp_memory(void)

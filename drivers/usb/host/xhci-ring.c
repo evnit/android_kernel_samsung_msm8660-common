@@ -1228,6 +1228,12 @@ static void xhci_cmd_to_noop(struct xhci_hcd *xhci, struct xhci_cd *cur_cd)
 		xhci_debug_ring(xhci, xhci->cmd_ring);
 		xhci_dbg_ring_ptrs(xhci, xhci->cmd_ring);
 		return;
+		/* There is no command to handle if we get a stop event when the
+		 * command ring is empty, event->cmd_trb points to the next
+		 * unset command
+		 */
+		if (xhci->cmd_ring->dequeue == xhci->cmd_ring->enqueue)
+			return;
 	}
 
 	/* find the command trb matched by cd from command ring */
@@ -1381,12 +1387,6 @@ static void handle_cmd_completion(struct xhci_hcd *xhci,
 			inc_deq(xhci, xhci->cmd_ring, false);
 			return;
 		}
-		/* There is no command to handle if we get a stop event when the
-		 * command ring is empty, event->cmd_trb points to the next
-		 * unset command
-		 */
-		if (xhci->cmd_ring->dequeue == xhci->cmd_ring->enqueue)
-			return;
 	}
 
 	switch (le32_to_cpu(xhci->cmd_ring->dequeue->generic.field[3])

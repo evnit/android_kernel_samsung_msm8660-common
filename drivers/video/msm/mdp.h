@@ -42,7 +42,6 @@ extern uint32 mdp_hw_revision;
 extern ulong mdp4_display_intf;
 extern spinlock_t mdp_spin_lock;
 extern int mdp_rev;
-extern int mdp_iommu_split_domain;
 extern struct mdp_csc_cfg mdp_csc_convert[4];
 extern struct mdp_csc_cfg_data csc_cfg_matrix[];
 extern struct workqueue_struct *mdp_hist_wq;
@@ -85,6 +84,7 @@ struct mdp_buf_type {
 struct mdp_table_entry {
 	uint32_t reg;
 	uint32_t val;
+	uint32_t mask;
 };
 
 extern struct mdp_ccs mdp_ccs_yuv2rgb ;
@@ -893,6 +893,7 @@ int mdp_histogram_block2mgmt(uint32_t block, struct mdp_hist_mgmt **mgmt);
 void mdp_histogram_handle_isr(struct mdp_hist_mgmt *mgmt);
 void __mdp_histogram_kickoff(struct mdp_hist_mgmt *mgmt);
 void __mdp_histogram_reset(struct mdp_hist_mgmt *mgmt);
+unsigned int mdp_check_suspended(void);
 void mdp_footswitch_ctrl(boolean on);
 
 #ifdef CONFIG_FB_MSM_MDP303
