@@ -1,5 +1,5 @@
 /*
- * Author: Dave Carey <carvsdriver@gmail.com>
+ * Author: Chad Froebel <chadfroebel@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -13,17 +13,9 @@
  */
 
 
-#ifndef _LINUX_GPUCONTROL_H
-#define _LINUX_GPUCONTROL_H
+#ifndef _LINUX_FASTCHG_H
+#define _LINUX_FASTCHG_H
 
-extern int gpu_2d_freq_phase;
-extern int gpu_3d_freq_phase;
-
-// initialize at max power
-#define KGSL_3D_MAX_PHASE 0
-#define KGSL_2D_MAX_PHASE 0
-
-#define KGSL_3D_MIN_PHASE 6
-#define KGSL_2D_MIN_PHASE 3
+extern int force_fast_charge;
 
 #endif

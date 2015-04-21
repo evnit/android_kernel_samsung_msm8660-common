@@ -54,6 +54,8 @@ u32 mdp_max_clk = 200000000;
 u64 mdp_max_bw = 2000000000;
 u32 mdp_bw_ab_factor = MDP4_BW_AB_DEFAULT_FACTOR;
 u32 mdp_bw_ib_factor = MDP4_BW_IB_DEFAULT_FACTOR;
+int mdp_iommu_split_domain;
+
 static struct platform_device *mdp_init_pdev;
 static struct regulator *footswitch;
 static unsigned int mdp_footswitch_on;
@@ -101,7 +103,7 @@ static struct delayed_work mdp_pipe_ctrl_worker;
 
 static boolean mdp_suspended = FALSE;
 ulong mdp4_display_intf;
-static DEFINE_MUTEX(mdp_suspend_mutex);
+DEFINE_MUTEX(mdp_suspend_mutex);
 
 #ifdef CONFIG_FB_MSM_MDP40
 struct mdp_dma_data dma2_data;
@@ -2226,6 +2228,10 @@ static int mdp_off(struct platform_device *pdev)
 		mdp4_lcdc_off(pdev);
 	else if (mfd->panel.type == MDDI_PANEL)
 		mdp4_mddi_off(pdev);
+#ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
+	else if (mfd->panel.type == WRITEBACK_PANEL)
+		mdp4_overlay_writeback_off(pdev);
+#endif
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	ret = panel_next_off(pdev);
@@ -2252,7 +2258,6 @@ void mdp4_hw_init(void)
 #endif
 
 static int mdp_bus_scale_restore_request(void);
-static struct msm_panel_common_pdata *mdp_pdata;
 
 static int mdp_on(struct platform_device *pdev)
 {
@@ -2309,9 +2314,6 @@ static int mdp_on(struct platform_device *pdev)
 		vsync_cntrl.dev = mfd->fbi->dev;
 
 	mdp_histogram_ctrl_all(TRUE);
-
-  if (mdp_pdata->mdp_gamma)
-    mdp_pdata->mdp_gamma();
 
 	if (ret == 0)
 		ret = panel_next_late_init(pdev);
@@ -2605,42 +2607,6 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 	return 0;
 }
 
-static int mdp_write_reg_mask(uint32_t reg, uint32_t val, uint32_t mask)
-{
-        uint32_t oldval, newval;
-
-        oldval = inpdw(MDP_BASE + reg);
-
-        oldval &= (~mask);
-        val &= mask;
-        newval = oldval | val;
-
-        outpdw(MDP_BASE + reg, newval);
-
-        return 0;
-
-}
-
-void mdp_color_enhancement(const struct mdp_table_entry *reg_seq, int size)
-{
-        int i;
-
-        printk(KERN_INFO "%s\n", __func__);
-
-        mdp_clk_ctrl(1);
-        mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-        for (i = 0; i < size; i++) {
-                if (reg_seq[i].mask == 0x0)
-                        outpdw(MDP_BASE + reg_seq[i].reg, reg_seq[i].val);
-                else
-                        mdp_write_reg_mask(reg_seq[i].reg, reg_seq[i].val, reg_seq[i].mask);
-        }
-        mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-        mdp_clk_ctrl(0);
-
-        return ;
-}
-
 static int mdp_probe(struct platform_device *pdev)
 {
 	struct platform_device *msm_fb_dev = NULL;
@@ -2685,13 +2651,12 @@ static int mdp_probe(struct platform_device *pdev)
 			mdp_bw_ib_factor = mdp_pdata->mdp_bw_ib_factor;
 
 		mdp_rev = mdp_pdata->mdp_rev;
+		mdp_iommu_split_domain = mdp_pdata->mdp_iommu_split_domain;
 
 		rc = mdp_irq_clk_setup(pdev, mdp_pdata->cont_splash_enabled);
 
 		if (rc)
 			return rc;
-
-		mdp_clk_ctrl(1);
 
 		mdp_hw_version();
 
@@ -2706,8 +2671,6 @@ static int mdp_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_OVERLAY
 		mdp_hw_cursor_init();
 #endif
-		mdp_clk_ctrl(0);
-
 		mdp_resource_initialized = 1;
 		return 0;
 	}
@@ -2741,6 +2704,7 @@ static int mdp_probe(struct platform_device *pdev)
 			if (!contSplash_update_done) {
 				mdp_pipe_ctrl(MDP_CMD_BLOCK,
 					MDP_BLOCK_POWER_ON, FALSE);
+				mdp_clk_ctrl(1);
 				contSplash_update_done = 1;
 			}
 		} else
@@ -3124,17 +3088,6 @@ static int mdp_probe(struct platform_device *pdev)
 	return rc;
 }
 
-unsigned int mdp_check_suspended(void)
-{
-	unsigned int ret;
-
-	mutex_lock(&mdp_suspend_mutex);
-	ret = mdp_suspended;
-	mutex_unlock(&mdp_suspend_mutex);
-
-	return ret;
-}
-
 void mdp_footswitch_ctrl(boolean on)
 {
 	mutex_lock(&mdp_suspend_mutex);
@@ -3201,7 +3154,6 @@ static void mdp_early_suspend(struct early_suspend *h)
 #ifdef CONFIG_FB_MSM_DTV
 	mdp4_dtv_set_black_screen();
 #endif
-	mdp4_iommu_detach();
 	mdp_footswitch_ctrl(FALSE);
 }
 

@@ -1284,7 +1284,7 @@ static void ndisc_router_discovery(struct sk_buff *skb)
 		rt->rt6i_expires = jiffies + (HZ * lifetime);
 
 	if (ra_msg->icmph.icmp6_hop_limit) {
-	 /* Only set hop_limit on the interface if it is higher than
+		 /* Only set hop_limit on the interface if it is higher than
 		* the current hop_limit.
 		*/
 	 if (in6_dev->cnf.hop_limit < ra_msg->icmph.icmp6_hop_limit) {

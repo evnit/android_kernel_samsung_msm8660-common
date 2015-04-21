@@ -3473,7 +3473,6 @@ CIFSSMBSetCIFSACL(const int xid, struct cifs_tcon *tcon, __u16 fid,
 	int rc = 0;
 	int bytes_returned = 0;
 	SET_SEC_DESC_REQ *pSMB = NULL;
-	NTRANSACT_RSP *pSMBr = NULL;
 	void *pSMBr;
 
 setCifsAclRetry:
