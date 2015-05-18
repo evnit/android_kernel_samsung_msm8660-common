@@ -2048,8 +2048,13 @@ struct platform_device msm_device_smd = {
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
 #ifdef CONFIG_SEC_DEBUG // msm_watchdog.c doesn't use boot command line.
+#ifndef CONFIG_TARGET_LOCALE_KOR
 	.pet_time = 10000,
 	.bark_time = 20000,
+	#else
+	.pet_time = 3000,
+	.bark_time = 15000,
+#endif
 #else
 	.pet_time = 10000,
 	.bark_time = 11000,

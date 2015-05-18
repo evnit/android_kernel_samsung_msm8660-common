@@ -135,6 +135,9 @@
 #include <mach/board-msm8660.h>
 #include <mach/devices-lte.h>
 #include <mach/iommu_domains.h>
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+#include <linux/memblock.h>
+#endif
 
 #include "devices.h"
 #include "devices-msm8x60.h"
@@ -3980,7 +3983,12 @@ unsigned char hdmi_is_primary;
 #define MSM_PMEM_ADSP_BASE         0x40400000
 #define MSM_PMEM_ADSP_SIZE         0x02A00000 /* 42MB */
 #endif
-#define MSM_PMEM_AUDIO_SIZE        0x28B000
+#define MSM_PMEM_AUDIO_SIZE        0x4CF000
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+#define RAM_CONSOLE_START 0x77800000
+#define RAM_CONSOLE_SIZE SZ_1M
+#endif
 
 #define MSM_SMI_BASE          0x38000000
 #define MSM_SMI_SIZE          0x4000000
@@ -3995,7 +4003,7 @@ unsigned char hdmi_is_primary;
 #define MSM_ION_SF_SIZE		0x4000000 /* 64MB */
 #define MSM_ION_CAMERA_SIZE	0x1200000 /* 18MB */
 #define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
-#define MSM_ION_MM_SIZE		0x3600000 /* (54MB) Must be a multiple of 64K */
+#define MSM_ION_MM_SIZE		0x3800000 /* (56MB) Must be a multiple of 64K */
 #define MSM_ION_MFC_SIZE	SZ_8K
 #if defined (CONFIG_FB_MSM_MIPI_S6E8AA0_HD720_PANEL)
 #define MSM_ION_WB_SIZE 	0x1700000 /* 23MB */
@@ -4263,6 +4271,21 @@ static struct platform_device android_pmem_smipool_device = {
 	.dev = { .platform_data = &android_pmem_smipool_pdata },
 };
 #endif
+#endif
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct resource ram_console_resource[] = {
+	 {
+	 .flags = IORESOURCE_MEM,
+	 },
+};
+	
+static struct platform_device ram_console_device = {
+	 .name = "ram_console",
+	 .id = -1,
+	 .num_resources = ARRAY_SIZE(ram_console_resource),
+ 	 .resource = ram_console_resource,
+};
 #endif
 
 #define GPIO_DONGLE_PWR_EN 258
@@ -9709,7 +9732,10 @@ static struct platform_device *surf_devices[] __initdata = {
 #ifdef CONFIG_SENSORS_AK8975
 	&akm_i2c_gpio_device,
 #endif
-&motor_i2c_gpio_device,
+ 	&motor_i2c_gpio_device,
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	 &ram_console_device,
+#endif
 };
 
 #ifdef CONFIG_ION_MSM
@@ -10029,6 +10055,13 @@ static void __init msm8x60_reserve(void)
 	msm8x60_set_display_params(prim_panel_name, ext_panel_name);
 	reserve_info = &msm8x60_reserve_info;
 	msm_reserve();
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	 if (memblock_remove(RAM_CONSOLE_START, RAM_CONSOLE_SIZE) == 0) {
+	ram_console_resource[0].start = RAM_CONSOLE_START;
+	ram_console_resource[0].end = RAM_CONSOLE_START+RAM_CONSOLE_SIZE-1;
+	 }
+#endif
 }
 
 #define EXT_CHG_VALID_MPP 10
@@ -16712,6 +16745,9 @@ static int atv_dac_power(int on)
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = MDP_VSYNC_GPIO,
 	.mdp_max_clk = 200000000,
+	.mdp_max_bw = 2000000000,
+	.mdp_bw_ab_factor = 115,
+	.mdp_bw_ib_factor = 150,
 #ifdef CONFIG_MSM_BUS_SCALING
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 #endif
