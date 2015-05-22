@@ -153,7 +153,6 @@ static u8 firm_version = 0;
 
 #ifdef CONFIG_TOUCH_CYPRESS_SWEEP2WAKE
 int s2w_switch = 1;
-int s2s_switch = 0;
 int s2w_sensitive = 0;
 int s2w_start = 0;
 int s2w_count = 0;
@@ -607,7 +606,7 @@ static irqreturn_t touchkey_interrupt(int irq, void *dummy)  // ks 79 - threaded
 				}
 				break;
 			}
-		} else if ((!touch_is_pressed) && (scr_suspended == false) && (s2s_switch)) { //s2s
+		} else if ((!touch_is_pressed) && (scr_suspended == false) && (s2w_switch == 2)) { //s2s
 			int key = data[0] & KEYCODE_BIT;
 			switch (key) {
 			case 4:
