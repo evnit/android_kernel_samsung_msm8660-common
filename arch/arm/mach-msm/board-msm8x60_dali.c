@@ -3995,7 +3995,7 @@ unsigned char hdmi_is_primary;
 #define MSM_ION_SF_SIZE		0x4000000 /* 64MB */
 #define MSM_ION_CAMERA_SIZE	0x1200000 /* 18MB */
 #define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
-#define MSM_ION_MM_SIZE		0x3600000 /* (54MB) Must be a multiple of 64K */
+#define MSM_ION_MM_SIZE		0x3800000 /* (56MB) Must be a multiple of 64K */
 #define MSM_ION_MFC_SIZE	SZ_8K
 #if defined (CONFIG_FB_MSM_MIPI_S6E8AA0_HD720_PANEL)
 #define MSM_ION_WB_SIZE 	0x1700000 /* 23MB */
